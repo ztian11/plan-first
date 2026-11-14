@@ -1,114 +1,164 @@
 # plan-first
 
-> 先规划，后编码 —— 约束 AI Agent（和人类）在动手写代码前，先完成系统性实施规划的工程实践 Skill。
+为 AI 编码助手提供需求澄清、可行性评审和按计划实施的工作流程。先说明项目给谁用、解决什么问题、从哪里使用、交付什么，再用验收证据推进工程任务。
 
-**English TL;DR:** plan-first helps coding agents plan and review multi-step or high-impact engineering work, verify prerequisites, execute within the confirmed scope, and resume from actual results and acceptance evidence. [Read SKILL.md](./SKILL.md) for the workflow.
+[v0.5.0 发布包](https://github.com/ztian11/plan-first/releases/tag/v0.5.0) · [文档模板](./references/plan-template.md) · [完整示例](./examples/example-plan.md) · [变更记录](./CHANGELOG.md) · [MIT](./LICENSE)
 
-## 解决什么问题
+**English overview** — plan-first is an instruction-based skill for coding agents. It produces a concise product requirements document and an engineering appendix, verifies prerequisites, tracks confirmed scope, and resumes work using actual results and acceptance evidence. Plans are saved under the project's `plans/` directory by default. Templates and examples are written in Chinese.
 
-AI 编码助手拿到需求的第一反应是开写。写到一半才发现：
+## 快速开始
 
-- 需求理解偏了，方向性返工
-- 依赖模块没调研，选型和现有工程约定冲突
-- 任务没有边界，"顺手"越做越大
-- 做完说不清"完成"的标准是什么
+1. 从发布页下载 `plan-first.zip` 并解压。
+2. 按下方安装步骤，把包含 `SKILL.md` 的目录安装到宿主的 Skill 目录。
+3. 在目标工程中调用 `plan-first`，给出要完成的事情和已有约束。
+4. 查看生成的需求正文、待确认事项和计划文件路径，再按已确认范围实施。
 
-完整流程如下。只要求规划或评审时，到交付对应结果为止。
+在支持 `$` 调用的 Codex 客户端中，可以这样开始。
 
-```mermaid
-flowchart LR
-    A[澄清与调研] --> D[输出实施规划]
-    D --> R{可行性评审与建议}
-    R -->|打回修订| D
-    R -->|受阻| B[记录解锁条件，暂停受影响任务]
-    B -->|补齐证据后复评| R
-    R -->|通过或有条件通过| E{确认版本与范围}
-    E -->|实质修改| D
-    E -->|确认范围| V{相关前置条件已通过}
-    V -->|尚待验证| P[执行已授权的前置验证]
-    P -->|通过，记录证据| V
-    P -->|失败，暂停依赖任务| R
-    V -->|已满足| F[执行并记录验收证据]
-    F -->|实质偏离| D
-    F -->|范围内调整| G[更新任务与记录]
-    G --> F
-    F --> H[逐项验收与交付总结]
+```text
+$plan-first 为博客增加账号登录和评论功能。
+面向博客读者，支持桌面 Chrome，先在开发环境验收。
+请先给需求文档和实施计划，保存到 plans/。
 ```
 
-执行规则
+## 安装与升级
 
-1. 调研时区分已验证事实、假设和证据缺口。
-2. 按已确认的规划版本与范围实施，先通过对应前置验证。
-3. 超出确认范围的变更先复评并重新确认。
-4. 中断恢复时先核对实际成果、依赖和验收证据。
+当前 Codex 官方文档列出的用户级 Skill 目录是 `~/.agents/skills/`，项目级目录是 `.agents/skills/`。以下命令使用用户级目录。已有安装应沿用实际加载路径进行升级，避免产生同名副本。其他宿主使用各自的 Skill 发现目录，并核对模板可以读取。[Codex Skill 文档](https://learn.chatgpt.com/docs/build-skills)
 
-## 产出什么
+解压后，进入包含 `SKILL.md` 的 `plan-first` 目录，再执行对应系统的命令。
 
-一份结构化实施规划文档（[模板见此](./references/plan-template.md)，[完整示例见此](./examples/example-plan.md)）：
+### Windows PowerShell
 
-| 节 | 内容 |
-|----|------|
-| 背景与目标 | 含明确的**非目标**，防范围蔓延 |
-| 现状调研结论 | 从代码里读到的事实，含文件路径 |
-| 验收标准 | 可验证的"完成"定义 |
-| 任务拆解表 | ID / 任务 / 优先级 P0–P2 / 依赖 / 预期产出 / 验收方式 / 状态及证据 |
-| 实施顺序 | 依赖优先，里程碑节点 |
-| 风险与待确认项 | 含需要用户拍板的决策 |
-| 可行性评审结论 | 三项固定检查、证据或证据缺口、前置动作与放行标准 |
-| 方案建议 | **实施建议**（步骤和注意事项）/ **优化建议**（方向和处置）/ **修改建议**（问题、改法和理由） |
-| 变更记录 | 版本变更、原因和确认记录 |
+```powershell
+$ErrorActionPreference = 'Stop'
+$skillSource = (Get-Location).Path
+$skillTarget = Join-Path $env:USERPROFILE '.agents\skills\plan-first'
 
-规划文档记录预期、决策和验证结果。跨会话接手时，以实际成果和验收证据核对任务状态。工作区不可写时，可在会话中交付规划，并说明保存状态。
+if (-not (Test-Path -LiteralPath (Join-Path $skillSource 'SKILL.md'))) {
+    throw '请先进入包含 SKILL.md 的 plan-first 目录。'
+}
+if (Test-Path -LiteralPath $skillTarget) {
+    throw '目标已存在，请按下方升级说明先比较本地改动。'
+}
 
-## 安装
-
-**Codex**　将包含 `SKILL.md` 的源码目录或发布包内的 `plan-first` 目录复制到 `$CODEX_HOME/skills/plan-first/`。未配置 `CODEX_HOME` 时使用 `~/.codex/skills/plan-first/`。确认 `SKILL.md` 位于该目录下，并保留 `references/plan-template.md` 的相对位置。在新会话确认 Skill 已出现，再用 `$plan-first` 显式调用。
-
-其他宿主按各自的 Skill 加载方式安装，并验证能读取主指令和模板。自动选择由宿主决定。
-
-## 使用
-
-以下示例展示完整流程中的范围确认。
-
-```
-你：帮我给博客加一个用户登录功能
-
-Agent：规划 v1 包含注册、登录、评论关联和密码找回。请确认本期实施范围。
-
-你：密码找回先不做，其他 OK
-
-Agent：v2 的实施范围是注册、登录和评论关联。请确认按 v2 开始。
-你：确认按 v2 开始。
+New-Item -ItemType Directory -Path $skillTarget -Force | Out-Null
+foreach ($name in @('SKILL.md', 'references', 'examples', 'LICENSE')) {
+    Copy-Item -LiteralPath (Join-Path $skillSource $name) -Destination $skillTarget -Recurse
+}
 ```
 
-对话中也可以显式触发：
+### macOS / Linux
 
-- "先规划一下" / "先出个方案" / "做个任务拆解" / "评审一下可行性" / "给点实施/优化/修改建议"
-- "直接做，别规划"（显式跳过）
+```bash
+(
+    set -eu
+    skill_source="$PWD"
+    skill_target="$HOME/.agents/skills/plan-first"
 
-**轻量模式**　影响有限但需要交代做法的任务，在会话中说明步骤、产出、主要风险和验收方式。实施范围已有明确授权时继续推进，有待决策的取舍先确认。涉及数据、生产环境或难以逆转的改动时，按影响和风险选择完整流程。
+    if [ ! -f "$skill_source/SKILL.md" ]; then
+        printf '%s\n' '请先进入包含 SKILL.md 的 plan-first 目录。' >&2
+        exit 1
+    fi
+    if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
+        printf '%s\n' '目标已存在，请按下方升级说明先比较本地改动。' >&2
+        exit 1
+    fi
 
-## 设计取舍
+    mkdir -p "$skill_target"
+    cp "$skill_source/SKILL.md" "$skill_source/LICENSE" "$skill_target/"
+    cp -R "$skill_source/references" "$skill_source/examples" "$skill_target/"
+)
+```
 
-- **确认范围**　使用已明确给出的实施授权，另行确认新增的范围、外部副作用和关键决策。
-- **为什么规划后必须做可行性评审**：规划写得漂亮不等于方案成立。评审固定查三件事——设计假设和代码/数据/依赖是否冲突、哪些"未知"被当成了"已知"、哪些缺口会导致返工。结论落进文档而不是留在对话里，是为了让评审结果可追溯、可复查。
-- **为什么建议要分实施/优化/修改三类**：三类建议对应的读者动作不同——实施建议是"照着做"，优化建议是"择机做"，修改建议是"必须决策"。混在一起，必须处理的修改会被"nice to have"淹没；分开写并要求逐条可追溯，建议才不会退化成口号。
-- **规划与恢复**　记录确认版本、任务依赖和验收证据，便于接手时核对进度及可安全继续的工作。
+安装后检查目标目录直接包含 `SKILL.md` 和 `references/plan-template.md`。在宿主中确认已发现 `plan-first`，更新未出现时重新启动宿主。[Codex Skill 文档](https://learn.chatgpt.com/docs/build-skills)
 
-## FAQ
+### 升级已有安装
 
-**Q：会不会太重？**
-低风险单点小修可以直接处理。轻量任务保留简要说明，完整规划用于多步骤或高影响的工作。
+先下载并解压新版本，查看变更记录，再比较新旧 `SKILL.md`、`references/` 和 `examples/`。本地定制内容先备份或合并，再更新同一安装目录中的这些文件。`LICENSE` 随版本一并更新。
 
-**Q：规划错了怎么办？**
-在变更记录中注明原因和影响。实质变更需要形成修订版，复评受影响部分并确认范围。
+本项目早期安装说明使用过 `~/.codex/skills/plan-first/`。升级时以宿主显示的实际加载路径为准，检查新模板和主指令属于同一版本。将备用副本放在 Skill 扫描目录之外。
 
-**Q：可行性评审和风险清单有什么区别？**
-风险清单是"我知道可能出问题"的主观罗列；可行性评审是对规划本身做事实核查——拿设计假设去比对代码/数据/依赖的实际状态，把没验证过的"已知"点名为假设。一个向前看（会发生什么），一个向后查（写下的东西站得住吗）。
+## 产出内容
 
-**Q：和 Plan Mode（计划模式）什么区别？**
-Plan Mode 是工具层面的能力；plan-first 是工程方法论，规定了规划的内容结构、优先级体系、验收标准和执行期同步规则，两者可以叠加使用。
+完整规划是一份 Markdown 文件，由六节需求正文和工程附录组成。
 
-## License
+| 部分 | 内容 |
+|------|------|
+| 1. 项目概览 | 当前问题、项目目标和预期结果 |
+| 2. 目标用户与使用场景 | 谁使用、关键操作路径、重要例外 |
+| 3. 呈现方式与支持终端 | 网页、App、API、CLI 等交付形态，使用入口、客户端和交付环境 |
+| 4. 本期需求与范围 | 带编号的需求、业务规则及本期边界 |
+| 5. 交付物与验收 | 最终可使用或接入的成果，以及可判定的验收条件 |
+| 6. 待确认事项 | 未决问题、暂用假设及其影响 |
+| 工程附录 | 调研证据、任务依赖、实施顺序、风险、评审、建议与变更记录 |
 
-[MIT](./LICENSE)
+需求编号关联验收项和实施任务。API、库和批处理按调用方、入口和输入输出描述。工程附录只保留适用内容，已有结论通过编号引用。[模板](./references/plan-template.md) · [博客登录示例](./examples/example-plan.md)
+
+## plan 保存在哪里
+
+保存位置依次采用用户指定路径、项目明确约定的目录、项目根目录下的 `plans/`。新计划使用日期和任务名命名。
+
+```text
+your-project/
+└── plans/
+    └── 2026-11-14-blog-login.md
+```
+
+单仓库以 Git 仓库根目录为基准，monorepo 默认共用仓库根目录的 `plans/`。无 Git 的项目使用已明确的项目目录。跨仓库任务选定一个主保存位置，并在文档中记录涉及的仓库。
+
+同一任务持续更新原文件，在文档内记录版本。新的同名任务使用文件名后缀。每次创建或实质更新后，助手返回计划的绝对路径，方便打开和交接。
+
+恢复任务时，优先使用用户给出的文件或交接路径，其次在项目规划目录中查找与任务匹配的计划。候选有多份时确认目标计划，再核对成果与验收记录。已有计划保留原路径，新计划默认使用 `plans/`。
+
+| 请求类型 | 交付与保存方式 |
+|----------|----------------|
+| 完整规划与实施 | 保存需求正文和工程附录，记录执行进度 |
+| 只写 PRD | 默认在会话中交付正文，要求文件时保存 |
+| 轻量任务 | 会话中给简要做法，需要跨会话交接时保存摘要 |
+| 没有可写位置 | 会话中交付，并说明保存状态及恢复所需材料 |
+
+## 更多使用方式
+
+**只写需求草稿**
+
+```text
+$plan-first 只写需求文档。我们要给售后和仓储系统提供批量查询订单状态的 API，
+交付测试环境。查询上限和权限模型待定，先出一份可评审的草稿。
+```
+
+**接着已有计划实施**
+
+```text
+$plan-first 继续 plans/2026-11-14-blog-login.md。
+先核对已完成任务的成果和验收记录，再推进依赖已满足的任务。
+```
+
+**限定本期范围**
+
+```text
+$plan-first 按已确认的 v2 方案实施。终端和交付环境沿用该版本，
+新增范围先更新需求和评审结论，再让我确认。
+```
+
+低风险单点小修可以直接处理。完整流程适用于多步骤或高影响工作，已明确的实施授权可以沿用。前置验证未通过时，受影响任务等待验证结果。具体执行规则见主指令。[SKILL.md](./SKILL.md)
+
+## 仓库结构与版本
+
+```text
+plan-first/
+├── SKILL.md
+├── references/plan-template.md
+├── examples/example-plan.md
+├── README.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── LICENSE
+```
+
+`main` 保存开发中的最新内容，带版本标签的发布页提供固定版本和安装 ZIP。v0.5.0 引入需求正文与工程附录，默认保存到 `plans/`，并补齐项目根目录、文件更新和恢复定位规则。[发布记录](https://github.com/ztian11/plan-first/releases) · [变更记录](./CHANGELOG.md)
+
+## 反馈与贡献
+
+反馈时请附上 Skill 版本、宿主、最小请求、预期行为和实际结果。涉及保存路径时附上脱敏后的目录结构，便于复现。欢迎用真实场景改进触发、规划和恢复规则。[提交 Issue](https://github.com/ztian11/plan-first/issues/new) · [贡献说明](./CONTRIBUTING.md)
+
+本项目采用 MIT 许可证。[LICENSE](./LICENSE)
